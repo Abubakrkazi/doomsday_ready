@@ -1,122 +1,65 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { useState } from "react";
+import { MoviesView } from "./views/MoviesView";
+import { RewatchPlanView } from "./views/RewatchPlanView";
+import { BookingView } from "./views/BookingView";
+import { Film, ListOrdered, Ticket } from "lucide-react";
 
-function App() {
-  const [count, setCount] = useState(0)
+export function App() {
+  const [activeTab, setActiveTab] = useState<"movies" | "rewatch" | "booking">("movies");
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
+    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
+      <header className="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50">
+        <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">🛡️</span>
+            <div>
+              <h1 className="font-extrabold tracking-tight text-white flex items-center gap-2">
+                DOOMSDAY READY <span className="text-xs font-semibold bg-red-600 text-white px-2 py-0.5 rounded">MCU 2027</span>
+              </h1>
+            </div>
+          </div>
 
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
+          <nav className="flex gap-1 bg-slate-950 p-1 rounded-xl border border-slate-800">
+            <button
+              onClick={() => setActiveTab("movies")}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+                activeTab === "movies" ? "bg-red-600 text-white shadow" : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Film className="w-4 h-4" /> Movies
+            </button>
+            <button
+              onClick={() => setActiveTab("rewatch")}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+                activeTab === "rewatch" ? "bg-red-600 text-white shadow" : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <ListOrdered className="w-4 h-4" /> Rewatch Plan
+            </button>
+            <button
+              onClick={() => setActiveTab("booking")}
+              className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition ${
+                activeTab === "booking" ? "bg-red-600 text-white shadow" : "text-slate-400 hover:text-white"
+              }`}
+            >
+              <Ticket className="w-4 h-4" /> Booking
+            </button>
+          </nav>
         </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
+      </header>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+      <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8">
+        {activeTab === "movies" && <MoviesView />}
+        {activeTab === "rewatch" && <RewatchPlanView />}
+        {activeTab === "booking" && <BookingView />}
+      </main>
+
+      <footer className="border-t border-slate-900 py-6 text-center text-xs text-slate-600">
+        Doomsday Ready • Built for Avengers: Doomsday Rewatch Planning
+      </footer>
+    </div>
+  );
 }
 
-export default App
+export default App;
