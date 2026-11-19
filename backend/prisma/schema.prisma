@@ -1,0 +1,44 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+// Feature 1: Movie Model
+model Movie {
+  id          String   @id @default(uuid())
+  title       String   @unique
+  releaseYear Int
+  runtime     Int      // 1 to 300 minutes
+  watched     Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  // Self-referencing Many-to-Many relationship for Prerequisites
+  prerequisites MoviePrerequisite[] @relation("MovieToPrerequisite")
+  requiredBy    MoviePrerequisite[] @relation("PrerequisiteToMovie")
+}
+// Explicit Join Table for Movie Prerequisites
+model MoviePrerequisite {
+  movieId        String
+  prerequisiteId String
+  movie          Movie  @relation("MovieToPrerequisite", fields: [movieId], references: [id], onDelete: Cascade)
+  prerequisite   Movie  @relation("PrerequisiteToMovie", fields: [prerequisiteId], references: [id], onDelete: Cascade)
+  @@id([movieId, prerequisiteId])
+}
+// Feature 2: Cinema Model
+model Cinema {
+  id        String         @id @default(uuid())
+  name      String         @unique
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+  bundles   CinemaBundle[]
+}
+// Cinema Bundle Sizes (e.g. 2, 5, 20 seats)
+model CinemaBundle {
+  id        String   @id @default(uuid())
+  cinemaId  String
+  seatCount Int      // 1 to 500 seats
+  cinema    Cinema   @relation(fields: [cinemaId], references: [id], onDelete: Cascade)
+  @@unique([cinemaId, seatCount])
+}
