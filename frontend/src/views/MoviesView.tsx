@@ -1,10 +1,15 @@
 import React, { useState, useEffect } from "react";
 import { getMovies, createMovie, updateMovie } from "../services/api";
-import { Movie } from "../types";
-import { Film, CheckCircle2, Circle, AlertTriangle, Plus } from "lucide-react";
+import type { Movie } from "../types";
+import { Film, CheckCircle2, Circle, AlertTriangle, Plus, Search, Edit3, X, Layers } from "lucide-react";
 
 export const MoviesView: React.FC = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"all" | "watched" | "unwatched">("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingMovie, setEditingMovie] = useState<Movie | null>(null);
+
   const [title, setTitle] = useState("");
   const [releaseYear, setReleaseYear] = useState(2026);
   const [runtime, setRuntime] = useState(120);
@@ -16,8 +21,8 @@ export const MoviesView: React.FC = () => {
     try {
       const data = await getMovies();
       setMovies(data);
-    } catch (err: any) {
-      setError("Failed to fetch movies");
+    } catch {
+      setError("Failed to fetch movies from database");
     }
   };
 
@@ -25,26 +30,54 @@ export const MoviesView: React.FC = () => {
     fetchMovies();
   }, []);
 
-  const handleCreate = async (e: React.FormEvent) => {
+  const openAddModal = () => {
+    setEditingMovie(null);
+    setTitle("");
+    setReleaseYear(2026);
+    setRuntime(120);
+    setSelectedPrereqs([]);
+    setError(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (movie: Movie) => {
+    setEditingMovie(movie);
+    setTitle(movie.title);
+    setReleaseYear(movie.releaseYear);
+    setRuntime(movie.runtime);
+    setSelectedPrereqs(movie.prerequisites.map((p) => p.id));
+    setError(null);
+    setIsModalOpen(true);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
     setLoading(true);
 
     try {
-      await createMovie({
-        title,
-        releaseYear: Number(releaseYear),
-        runtime: Number(runtime),
-        prerequisites: selectedPrereqs,
-      });
-      setTitle("");
-      setSelectedPrereqs([]);
+      if (editingMovie) {
+        await updateMovie(editingMovie.id, {
+          title,
+          releaseYear: Number(releaseYear),
+          runtime: Number(runtime),
+          prerequisites: selectedPrereqs,
+        });
+      } else {
+        await createMovie({
+          title,
+          releaseYear: Number(releaseYear),
+          runtime: Number(runtime),
+          prerequisites: selectedPrereqs,
+        });
+      }
+      setIsModalOpen(false);
       await fetchMovies();
     } catch (err: any) {
       if (err.response?.status === 409) {
         setError(`409 CIRCULAR_DEPENDENCY: ${err.response.data.message}`);
       } else {
-        setError(err.response?.data?.message || "Failed to create movie");
+        setError(err.response?.data?.message || "Operation failed");
       }
     } finally {
       setLoading(false);
@@ -55,8 +88,8 @@ export const MoviesView: React.FC = () => {
     try {
       await updateMovie(movie.id, { watched: !movie.watched });
       await fetchMovies();
-    } catch (err: any) {
-      setError("Failed to update watched status");
+    } catch {
+      setError("Failed to update status");
     }
   };
 
@@ -66,135 +99,217 @@ export const MoviesView: React.FC = () => {
     );
   };
 
+  const filteredMovies = movies.filter((m) => {
+    const match = m.title.toLowerCase().includes(search.toLowerCase());
+    if (filter === "watched") return match && m.watched;
+    if (filter === "unwatched") return match && !m.watched;
+    return match;
+  });
+
   return (
-    <div className="space-y-8">
+    <div style={{ display: "flex", flexDirection: "column", gap: "1.75rem" }}>
       {error && (
-        <div className="bg-red-950/80 border border-red-500 text-red-200 px-4 py-3 rounded-lg flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 text-red-400" />
-            <span>{error}</span>
+        <div style={{ backgroundColor: "rgba(127, 29, 29, 0.7)", border: "1px solid #ef4444", padding: "1rem", borderRadius: "10px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "#fecaca" }}>
+            <AlertTriangle style={{ width: "20px", height: "20px", color: "#ef4444" }} />
+            <span style={{ fontSize: "0.9rem" }}>{error}</span>
           </div>
-          <button onClick={() => setError(null)} className="text-red-400 font-bold">×</button>
+          <button onClick={() => setError(null)} style={{ background: "none", color: "#fecaca", fontWeight: 700 }}>×</button>
         </div>
       )}
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
-        <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-          <Plus className="w-5 h-5 text-red-500" /> Add MCU Movie
-        </h2>
-        <form onSubmit={handleCreate} className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Title</label>
-              <input
-                type="text"
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="e.g. Iron Man"
-                className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Release Year</label>
-              <input
-                type="number"
-                required
-                value={releaseYear}
-                onChange={(e) => setReleaseYear(Number(e.target.value))}
-                className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-semibold uppercase text-slate-400 mb-1">Runtime (1–300 mins)</label>
-              <input
-                type="number"
-                required
-                min={1}
-                max={300}
-                value={runtime}
-                onChange={(e) => setRuntime(Number(e.target.value))}
-                className="w-full bg-slate-800 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500"
-              />
-            </div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: "1rem" }}>
+        <div style={{ display: "flex", gap: "0.75rem", flex: 1, maxWidth: "520px" }}>
+          <div style={{ position: "relative", width: "100%" }}>
+            <Search style={{ position: "absolute", left: "12px", top: "12px", width: "16px", height: "16px", color: "#64748b" }} />
+            <input
+              type="text"
+              placeholder="Search movie catalog..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="input-field"
+              style={{ paddingLeft: "2.3rem" }}
+            />
           </div>
-
-          <div>
-            <label className="block text-xs font-semibold uppercase text-slate-400 mb-2">Prerequisites (Watch These First)</label>
-            <div className="flex flex-wrap gap-2 max-h-36 overflow-y-auto p-2 bg-slate-950/60 rounded-lg border border-slate-800">
-              {movies.map((m) => (
-                <button
-                  type="button"
-                  key={m.id}
-                  onClick={() => handlePrereqToggle(m.id)}
-                  className={`text-xs px-3 py-1.5 rounded-full border transition ${
-                    selectedPrereqs.includes(m.id)
-                      ? "bg-red-600 border-red-500 text-white"
-                      : "bg-slate-800 border-slate-700 text-slate-300 hover:border-slate-500"
-                  }`}
-                >
-                  {m.title}
-                </button>
-              ))}
-              {movies.length === 0 && <span className="text-xs text-slate-500">No existing movies to depend on.</span>}
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full md:w-auto px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white font-medium rounded-lg text-sm transition shadow-lg shadow-red-600/30"
+          <select
+            value={filter}
+            onChange={(e: any) => setFilter(e.target.value)}
+            className="select-field"
+            style={{ width: "140px" }}
           >
-            {loading ? "Adding..." : "Add Movie"}
-          </button>
-        </form>
+            <option value="all">All Movies</option>
+            <option value="watched">Watched</option>
+            <option value="unwatched">Unwatched</option>
+          </select>
+        </div>
+
+        <button className="btn-crimson" onClick={openAddModal}>
+          <Plus style={{ width: "18px", height: "18px" }} /> Add MCU Movie
+        </button>
       </div>
 
-      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-xl">
-        <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-          <Film className="w-5 h-5 text-red-500" /> MCU Movies ({movies.length})
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {movies.map((m) => (
-            <div
-              key={m.id}
-              className={`p-4 rounded-xl border transition ${
-                m.watched ? "bg-slate-950/40 border-emerald-900/50" : "bg-slate-800/40 border-slate-800 hover:border-slate-700"
-              }`}
-            >
-              <div className="flex items-start justify-between">
-                <div>
-                  <h3 className="font-semibold text-white">{m.title}</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">{m.releaseYear} • {m.runtime} mins</p>
-                </div>
-                <button
-                  onClick={() => toggleWatched(m)}
-                  className="p-1 rounded-lg hover:bg-slate-800 transition"
+      <div className="cards-grid">
+        {filteredMovies.map((m) => (
+          <div key={m.id} className="command-card" style={{ display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div>
+              <div
+                style={{
+                  height: "130px",
+                  borderRadius: "10px",
+                  background: "linear-gradient(135deg, #161d2d 0%, #07090e 100%)",
+                  border: "1px solid #1e2638",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  marginBottom: "1rem",
+                  position: "relative",
+                }}
+              >
+                <Film style={{ width: "40px", height: "40px", color: "#334155" }} />
+                <span
+                  style={{
+                    position: "absolute",
+                    top: "10px",
+                    right: "10px",
+                    fontSize: "0.7rem",
+                    fontWeight: 700,
+                    padding: "0.25rem 0.55rem",
+                    borderRadius: "4px",
+                    backgroundColor: m.watched ? "rgba(16, 185, 129, 0.18)" : "rgba(100, 116, 139, 0.25)",
+                    color: m.watched ? "#34d399" : "#94a3b8",
+                  }}
                 >
-                  {m.watched ? (
-                    <CheckCircle2 className="w-5 h-5 text-emerald-400" />
-                  ) : (
-                    <Circle className="w-5 h-5 text-slate-500 hover:text-slate-300" />
-                  )}
-                </button>
+                  {m.watched ? "WATCHED" : "UNWATCHED"}
+                </span>
               </div>
 
-              {m.prerequisites.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-slate-800/80">
-                  <span className="text-[11px] font-medium text-slate-400 block mb-1">Prerequisites:</span>
-                  <div className="flex flex-wrap gap-1">
-                    {m.prerequisites.map((p) => (
-                      <span key={p.id} className="text-[10px] bg-slate-800 text-slate-300 px-2 py-0.5 rounded">
-                        {p.title}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
+              <h4 style={{ fontSize: "1.15rem", fontWeight: 700, color: "#ffffff", marginBottom: "0.3rem" }}>{m.title}</h4>
+              <p style={{ fontSize: "0.85rem", color: "#94a3b8", marginBottom: "0.75rem" }}>
+                {m.releaseYear} • {m.runtime} mins
+              </p>
+
+              <div style={{ display: "flex", alignItems: "center", gap: "0.4rem", color: "#d4af37", fontSize: "0.75rem", fontWeight: 600 }}>
+                <Layers style={{ width: "14px", height: "14px" }} />
+                <span>{m.prerequisites.length} prerequisite{m.prerequisites.length !== 1 ? "s" : ""}</span>
+              </div>
             </div>
-          ))}
-        </div>
+
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: "1.25rem", paddingTop: "0.75rem", borderTop: "1px solid #1e2638" }}>
+              <button
+                onClick={() => toggleWatched(m)}
+                style={{ background: "none", display: "flex", alignItems: "center", gap: "0.4rem", fontSize: "0.8rem", color: m.watched ? "#10b981" : "#94a3b8", cursor: "pointer" }}
+              >
+                {m.watched ? <CheckCircle2 style={{ width: "18px", height: "18px" }} /> : <Circle style={{ width: "18px", height: "18px" }} />}
+                {m.watched ? "Watched" : "Mark Watched"}
+              </button>
+
+              <button
+                onClick={() => openEditModal(m)}
+                style={{ background: "none", color: "#94a3b8", cursor: "pointer", display: "flex", alignItems: "center", gap: "0.3rem", fontSize: "0.8rem" }}
+              >
+                <Edit3 style={{ width: "15px", height: "15px" }} /> Edit
+              </button>
+            </div>
+          </div>
+        ))}
       </div>
+
+      {isModalOpen && (
+        <div className="modal-backdrop">
+          <div className="modal-window">
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "1.25rem 1.5rem", borderBottom: "1px solid #1e2638" }}>
+              <h3 style={{ fontSize: "1.2rem", fontWeight: 700, color: "#ffffff" }}>
+                {editingMovie ? "Edit MCU Movie" : "Add MCU Movie"}
+              </h3>
+              <button onClick={() => setIsModalOpen(false)} style={{ background: "none", color: "#94a3b8", cursor: "pointer" }}>
+                <X style={{ width: "20px", height: "20px" }} />
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} style={{ padding: "1.5rem", display: "flex", flexDirection: "column", gap: "1rem" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", marginBottom: "0.3rem" }}>
+                  Title
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="e.g. Captain America: The First Avenger"
+                  className="input-field"
+                />
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "1rem" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", marginBottom: "0.3rem" }}>
+                    Release Year
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    value={releaseYear}
+                    onChange={(e) => setReleaseYear(Number(e.target.value))}
+                    className="input-field"
+                  />
+                </div>
+                <div>
+                  <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", marginBottom: "0.3rem" }}>
+                    Runtime (1–300 mins)
+                  </label>
+                  <input
+                    type="number"
+                    required
+                    min={1}
+                    max={300}
+                    value={runtime}
+                    onChange={(e) => setRuntime(Number(e.target.value))}
+                    className="input-field"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label style={{ display: "block", fontSize: "0.75rem", fontWeight: 600, color: "#94a3b8", textTransform: "uppercase", marginBottom: "0.4rem" }}>
+                  Prerequisites (Watch These Before This Movie)
+                </label>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: "0.4rem", maxHeight: "150px", overflowY: "auto", padding: "0.6rem", backgroundColor: "#0b0f17", borderRadius: "8px", border: "1px solid #1e2638" }}>
+                  {movies
+                    .filter((m) => !editingMovie || m.id !== editingMovie.id)
+                    .map((m) => (
+                      <button
+                        type="button"
+                        key={m.id}
+                        onClick={() => handlePrereqToggle(m.id)}
+                        style={{
+                          fontSize: "0.75rem",
+                          padding: "0.3rem 0.65rem",
+                          borderRadius: "9999px",
+                          border: selectedPrereqs.includes(m.id) ? "1px solid #e62429" : "1px solid #334155",
+                          backgroundColor: selectedPrereqs.includes(m.id) ? "#e62429" : "#161d2d",
+                          color: selectedPrereqs.includes(m.id) ? "#ffffff" : "#94a3b8",
+                          cursor: "pointer",
+                        }}
+                      >
+                        {m.title}
+                      </button>
+                    ))}
+                </div>
+              </div>
+
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: "0.75rem", marginTop: "1rem" }}>
+                <button type="button" className="btn-ghost" onClick={() => setIsModalOpen(false)}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={loading} className="btn-crimson">
+                  {loading ? "Processing..." : editingMovie ? "Update Movie" : "Save Movie"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
