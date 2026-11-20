@@ -22,6 +22,7 @@ app.use(limiter);
 
 app.use("/api/movies", movieRoutes);
 app.use("/api/cinemas", cinemaRoutes);
+app.use("/api/cinema", cinemaRoutes);
 
 app.use(errorHandler);
 

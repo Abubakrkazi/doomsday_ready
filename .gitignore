@@ -1,7 +1,14 @@
+# Dependencies
 node_modules/
-dist/
-build/
+
+# Environment
 .env
-*.log
-coverage/
-.DS_Store
+.env.*
+
+# Prisma Database
+backend/prisma/*.db
+backend/prisma/*.db-journal
+
+# Build
+backend/dist/
+frontend/dist/
